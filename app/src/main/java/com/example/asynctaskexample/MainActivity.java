@@ -16,8 +16,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView txvMessage;
     private ProgressBar progressBar;
     private Button btnCancel;
-    private static final int MAX_LENGTH = 20000;
+    private Button btnSort;
+    private static final int MAX_LENGTH = 10000;
     private int[] numbers = new int[MAX_LENGTH];
+    SimpleAsyncTask sat;
 
 
     @Override
@@ -26,8 +28,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         txvMessage = findViewById(R.id.txvMessage);
+        btnCancel = findViewById(R.id.btnCancel);
+        btnCancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sat.cancel(true);
+            }
+        });
+        btnCancel.setVisibility(View.INVISIBLE);
+        btnSort = findViewById(R.id.btnSort);
 
         generateNumbers();
+
+
 
     }
 
@@ -41,14 +54,17 @@ public class MainActivity extends AppCompatActivity {
         bubbleSort(numbers);
         txvMessage.setText("Operación terminada");*/
         //OPCION 2. CREAR UN HILO PARA LA EJECUCION DE LA ORDENACION POR BURBUJA
-        execWithThread();
+        //execWithThread();
+        //OPCION 3: ASYNCTASK
+        sat = new SimpleAsyncTask();
+        sat.execute();
     }
 
     private void execWithThread() {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                bubbleSort(numbers);
+                bubbleSort();
                 //Para actualizar la interfaz desde un hilo debemos crear otro:
                 //OPCION 1:
                 /*runOnUiThread(new Runnable() {
@@ -77,9 +93,8 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Método que ordena un array mediante el algoritmo de la burbuja
-     * @param numbers
      */
-    private void bubbleSort(int[] numbers) {
+    private void bubbleSort() {
         int aux;
         for (int i = 0; i < numbers.length; i++) {
             for (int j=i+1; j < numbers.length-1; j++) {
@@ -93,7 +108,67 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //Todos los metodos se ejecutan en el hilo de la interfaz grafica meno doInBackground
-    private class  SimpleAsyncTask extends AsyncTask<> {
+    private class  SimpleAsyncTask extends AsyncTask<Void, Integer, Void> {
 
+        @Override
+        protected void onCancelled() {
+            super.onCancelled();
+            btnCancel.setVisibility(View.INVISIBLE);
+            btnSort.setEnabled(true);
+            txvMessage.setText("Operación cancelada");
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            btnCancel.setVisibility(View.VISIBLE);
+            btnSort.setEnabled(false);
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            int aux;
+            int vecesARecorrer = numbers.length;
+            for (int i = 0; i < numbers.length; i++) {
+                if (!isCancelled())
+                {
+                    int percent = (int)((((float)(i)) / vecesARecorrer) * 100);
+                    publishProgress(percent);
+                } else {
+                    break;
+                }
+                for (int j=i; j < numbers.length-1; j++) {
+                    if (numbers[i] > numbers[j]) {
+                        aux = numbers[i];
+                        numbers[i] = numbers[j];
+                        numbers[j] = aux;
+                    }
+                }
+            }
+            //Si no se cancela se usará la barra de progreso
+
+            return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            super.onProgressUpdate(values);
+            txvMessage.setText(values[0] + "%");
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            btnCancel.setVisibility(View.INVISIBLE);
+            btnSort.setEnabled(true);
+            txvMessage.setText("Operación terminada");
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (sat != null && sat.getStatus() == AsyncTask.Status.RUNNING)
+            sat.cancel(true);
     }
 }

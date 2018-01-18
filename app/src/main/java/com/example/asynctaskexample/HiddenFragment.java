@@ -14,16 +14,18 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import java.io.Serializable;
 import java.util.Random;
 
-public class HiddenFragment extends Fragment {
+public class HiddenFragment extends Fragment implements Serializable {
 
     private TaskCallbacks callback;
     private static final int MAX_LENGTH = 10000;
     private int[] numbers = new int[MAX_LENGTH];
+    private ProgressBarTask progressBarTask;
 
     interface TaskCallbacks {
-        void onPreExecute();
+        void onPreExecute(ProgressBarTask task);
         void onProgressUpdate(int i);
         void onCancelled();
         void onPostExecute();
@@ -51,7 +53,7 @@ public class HiddenFragment extends Fragment {
         //Generamos los numeros
         generateNumbers();
         //Se inicia la tarea
-        ProgressBarTask progressBarTask = new ProgressBarTask();
+        progressBarTask = new ProgressBarTask();
         progressBarTask.execute();
     }
 
@@ -63,6 +65,10 @@ public class HiddenFragment extends Fragment {
         } else {
             throw new ClassCastException(activity.getLocalClassName() + " debe implementar TaskCallbacks");
         }
+    }
+
+    public ProgressBarTask getProgressBarTask() {
+        return progressBarTask;
     }
 
     public class ProgressBarTask extends AsyncTask<Void, Integer, Void> {
@@ -96,7 +102,7 @@ public class HiddenFragment extends Fragment {
         protected void onPreExecute() {
             super.onPreExecute();
             if (callback != null) {
-                callback.onPreExecute();
+                callback.onPreExecute(this);
             }
         }
 
